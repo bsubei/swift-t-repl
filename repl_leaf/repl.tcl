@@ -14,15 +14,20 @@ namespace eval repl {
 	set input [gets stdin]
 	puts "user input: $input"
 	# store entire input here (concatenate it)
-	set all_input ""
+	set allInput ""
 
 	while {[string compare $input "%END"] != 0} {
-	    set all_input [concat $all_input $input]	    
+	    set allInput [concat $allInput $input]	    
 	    set input [gets stdin]	    
 	    puts "user input: $input" 
 	}
 
 	puts "finished!"
-	puts "all_input: $all_input"
+	puts "allInput: $allInput"
+    	set filename "tmp.swift"
+    	set fileId [open $filename "w"]
+    	puts -nonewline $fileId $allInput
+    	close $fileId
     }
+
 }
