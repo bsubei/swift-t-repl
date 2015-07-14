@@ -39,23 +39,41 @@ namespace eval repl {
 	close $fileId
 
 	set finalTicOutput ""
-	set data [split $ticOutput "\n"]
-	# regex extracts names of procs (functions) from ticOutput
-	set regResult [regexp -all -inline {\s*proc\s+([\w:]+)\s*\{} $ticOutput ]    	
-	# extracts unique names from regexp result
-	foreach {tmp procName} $regResult {
-	    puts "found proc name: $procName"
- 	}
-	
-	# regex extracts insides of a swift:main function
-	if [ regexp {\s*proc\s+swift:main\s*\{[^*]*\}\s*\{([^*\}]*)\}} $ticOutput -> procCode] then {
-	    puts "code inside main proc: $procCode"
-	    # TODO run what's inside main function
-	    # TODO if calls to any proc
-		# include definition of proc
+	set lines [split $ticOutput "\n"]
+
+	# remove all lines of code that start with any of these terms	
+	set searchTerms [list "package" "namespace" "turbine::defaults" "turbine::defaults" "turbine::declare_custom_work_types" "turbine::init" "turbine::enable_read_refcount" "turbine::check_constants" "turbine::finalize" "turbine::start" "adlb::declare_struct_type" "#*"]
+	set lineNumbersToRemove [list]
+	set lineNumber 0
+	# mark which lines of code start with these terms
+	foreach line $lines {
+	    foreach searchTerm $searchTerms {
+		if {[ string match $searchTerm* $line ]} {
+		    lappend lineNumbersToRemove $lineNumber
+		    break
+		}
+	    }
+	    set lineNumber [expr {$lineNumber+1}]
 	}
 
-
+	# now remove the marked lines
+	# iterate over list backwards (so removing lines doesn't change line numbers ahead of current point)
+	for {set i [expr {[llength $lineNumbersToRemove] - 1}]} {$i >= 0} {incr i -1} {
+	    set index [lindex $lineNumbersToRemove $i]
+	    set lines [lreplace $lines $index $index]
+	}
+	
+	# append main function call to script
+	lappend lines "swift:main\n"
+	# now join it into one string
+	set cleanTicOutput [join $lines \n]
+	# write it to a file for debugging (the r in "tric" stands for REPL)	
+	set fileId [open "tmp.tric" "w"]
+    	puts -nonewline $fileId $cleanTicOutput
+    
+	
+	# now eval the tric code
+	eval $cleanTicOutput
     }
 
 }
