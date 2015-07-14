@@ -24,10 +24,19 @@ namespace eval repl {
 
 	puts "finished!"
 	puts "allInput: $allInput"
-    	set filename "tmp.swift"
-    	set fileId [open $filename "w"]
+
+	# write input to swift file and compile it in STC
+    	set swiftFilename "tmp.swift"
+    	set fileId [open $swiftFilename "w"]
     	puts -nonewline $fileId $allInput
     	close $fileId
+	puts "Wrote tmp file to: $swiftFilename. Calling STC on it."
+	set ticFilename "tmp.tic"
+	exec stc -V $swiftFilename $ticFilename
+	# read in tic output and process it (remove boilerplate code)
+	set fileId [open $ticFilename "r"]
+	set ticOutput [read $fileId]
+	close $fileId
     }
 
 }
