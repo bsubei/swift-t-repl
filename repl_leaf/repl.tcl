@@ -12,18 +12,16 @@ namespace eval repl {
 
 	# keep taking user input until %END is entered
 	set input [gets stdin]
-	puts "user input: $input"
 	# store entire input here (concatenate it)
 	set allInput ""
 
 	while {[string compare $input "%END"] != 0} {
-	    set allInput [concat $allInput $input]	    
+	    append allInput "$input\n" 
 	    set input [gets stdin]	    
-	    puts "user input: $input" 
 	}
 
 	puts "finished!"
-	puts "allInput: $allInput"
+	puts "Attempting to run user input script:\n$allInput"
 
 	# write input to swift file and compile it in STC
     	set swiftFilename "tmp.swift"
