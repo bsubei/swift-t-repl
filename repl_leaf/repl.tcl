@@ -37,6 +37,25 @@ namespace eval repl {
 	set fileId [open $ticFilename "r"]
 	set ticOutput [read $fileId]
 	close $fileId
+
+	set finalTicOutput ""
+	set data [split $ticOutput "\n"]
+	# regex extracts names of procs (functions) from ticOutput
+	set regResult [regexp -all -inline {\s*proc\s+([\w:]+)\s*\{} $ticOutput ]    	
+	# extracts unique names from regexp result
+	foreach {tmp procName} $regResult {
+	    puts "found proc name: $procName"
+ 	}
+	
+	# regex extracts insides of a swift:main function
+	if [ regexp {\s*proc\s+swift:main\s*\{[^*]*\}\s*\{([^*\}]*)\}} $ticOutput -> procCode] then {
+	    puts "code inside main proc: $procCode"
+	    # TODO run what's inside main function
+	    # TODO if calls to any proc
+		# include definition of proc
+	}
+
+
     }
 
 }
