@@ -45,7 +45,8 @@ namespace eval repl {
 	close $fileId
 
 	# now eval the tric code
-	eval $cleanTicOutput
+	# eval $ticOutput
+	uplevel #0 $ticOutput
     }
 
 }
