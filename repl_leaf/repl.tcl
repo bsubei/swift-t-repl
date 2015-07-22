@@ -39,11 +39,6 @@ namespace eval repl {
 	# append main function call to script
 	append ticOutput "\nswift:main\n"
 
-	# write it to a file for debugging (the r in "tric" stands for REPL)	
-	set fileId [open "tmp.tric" "w"]
-	puts -nonewline $fileId $ticOutput
-	close $fileId
-
 	# now eval the tric code
 	# eval $ticOutput
 	uplevel #0 $ticOutput
