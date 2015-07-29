@@ -10,37 +10,50 @@ namespace eval repl {
     puts "Welcome to the extremely basic REPL turbine!"
 
 
-    # keep taking user input until %END is entered
-    set input [gets stdin]
-    # store entire input here (concatenate it)
-    set allInput ""
+    while {1} {
+      # store entire input here (concatenate it)
+      set allInput ""
 
-    while {[string compare $input "%END"] != 0} {
-      append allInput "$input\n"
+      # keep taking user input until %EXIT is entered
       set input [gets stdin]
+      if {[string compare $input "%EXIT"] == 0} {
+        puts "exiting..."
+        return
+      }
+
+      # append all input until %END is given
+      while {[string compare $input "%END"] != 0} {
+        append allInput "$input\n"
+
+        if {[string compare $input "%EXIT"] == 0} {
+          puts "exiting..."
+          return
+        }
+        set input [gets stdin]
+      }
+
+      # puts "finished!"
+      # puts "Attempting to run user input script:\n$allInput"
+
+      # write input to swift file and compile it in STC
+      set swiftFilename "tmp.swift"
+      set fileId [open $swiftFilename "w"]
+      puts -nonewline $fileId $allInput
+      close $fileId
+      puts "Wrote tmp file to: $swiftFilename. Calling STC on it."
+      set ticFilename "tmp.tic"
+      exec stc -c -O0 -V $swiftFilename $ticFilename
+      # read in tic output
+      set fileId [open $ticFilename "r"]
+      set ticOutput [read $fileId]
+      close $fileId
+
+      # eval the tic code definitions on all ranks and run worker_barrier
+      loadTic [list $ticOutput]
+
+      # now execute the main from the tic for this rank only
+      uplevel #0 swift:main
     }
-
-    puts "finished!"
-    puts "Attempting to run user input script:\n$allInput"
-
-    # write input to swift file and compile it in STC
-    set swiftFilename "tmp.swift"
-    set fileId [open $swiftFilename "w"]
-    puts -nonewline $fileId $allInput
-    close $fileId
-    puts "Wrote tmp file to: $swiftFilename. Calling STC on it."
-    set ticFilename "tmp.tic"
-    exec stc -c -O0 -V $swiftFilename $ticFilename
-    # read in tic output
-    set fileId [open $ticFilename "r"]
-    set ticOutput [read $fileId]
-    close $fileId
-
-    # eval the tic code definitions on all ranks and run worker_barrier
-    loadTic [list $ticOutput]
-
-    # now execute the main from the tic for this rank only
-    uplevel #0 swift:main
   }
 
 
@@ -49,26 +62,27 @@ namespace eval repl {
   # should access the variables using the globals_map
   # But so far, putting tasks to workers works.
   proc loadTic { tic_code } { 
-      # eval tic code (now globals and proc defs are available to this rank)
-      uplevel #0 {*}$tic_code
+    # eval tic code (now globals and proc defs are available to this rank)
+    uplevel #0 {*}$tic_code
 
-      # if rank 0 (only REPL loop)
-      if {[adlb::rank] == 0} {
+    # if rank 0 (only REPL loop)
+    if {[adlb::rank] == 0} {
 
-        set numWorkers [ adlb::workers ]
-        puts "numWorkers: $numWorkers"
-        # for all workers (start at 1, skip this current one)
-        for {set worker 1} {$worker < $numWorkers} {incr worker} {
-          # # set max priority
-          # send targeted task to worker with payload "loadTic tic_code"
-          set putAction [list "repl::loadTic"]
-          lappend putAction $tic_code
-          adlb::put $worker ${turbine::WORK_TASK} $putAction 0 1 HARD
-        }
+      set numWorkers [ adlb::workers ]
+      # puts "numWorkers: $numWorkers"
+      # for all workers (start at 1, skip this current one)
+      for {set worker 1} {$worker < $numWorkers} {incr worker} {
+        # # set max priority
+        # send targeted task to worker with payload "loadTic tic_code"
+        set putAction [list "repl::loadTic"]
+        lappend putAction $tic_code        
+
+        adlb::put $worker ${turbine::WORK_TASK} $putAction ::turbine::INT_MAX 1 HARD
       }
-      puts "rank: [adlb::rank] done"
-      adlb::worker_barrier
     }
+    puts "rank: [adlb::rank] done loadTic"
+    adlb::worker_barrier
+  }
 
 
 
