@@ -7,33 +7,33 @@ namespace eval repl {
 
   proc start_repl {} {
 
-    puts "Welcome to the extremely basic REPL turbine!"
-
+    puts "Welcome to the extremely basic REPL turbine"
 
     while {1} {
+      puts "Please enter your swift script. Use %HELP for help."
       # store entire input here (concatenate it)
       set allInput ""
 
       # keep taking user input until %EXIT is entered
       set input [gets stdin]
-      if {[string compare $input "%EXIT"] == 0} {
-        puts "exiting..."
-        return
-      }
 
       # append all input until %END is given
       while {[string compare $input "%END"] != 0} {
-        append allInput "$input\n"
-
         if {[string compare $input "%EXIT"] == 0} {
           puts "exiting..."
           return
+        } elseif {[string compare $input "%ls"] == 0} {
+          puts "printing out global variable states:"
+          printGlobals
+        } elseif {[string compare $input "%HELP"] == 0} {
+          printHelp
+        } else {
+          append allInput "$input\n"
         }
         set input [gets stdin]
       }
 
-      # puts "finished!"
-      # puts "Attempting to run user input script:\n$allInput"
+      puts "Running user input..."
 
       # write input to swift file and compile it in STC
       set swiftFilename "tmp.swift"
@@ -56,48 +56,51 @@ namespace eval repl {
     }
   }
 
-
-  # TODO multiple copies of variables are created, one in each worker. Need to fix
-  # this soon. Only one copy should be created, and then the other workers
-  # should access the variables using the globals_map
-  # But so far, putting tasks to workers works.
+  # Loads (evals) the tic code (a list) on the current worker (includes proc definitions
+  # and calls to create global variables). Called on worker 0 first, in which case it
+  # puts tasks to call this proc to other workers.
+  # 
+  # The tic code contains the commands to create a single copy of global
+  # variables, which is sent to other workers.
   proc loadTic { tic_code } { 
     # eval tic code (now globals and proc defs are available to this rank)
     uplevel #0 {*}$tic_code
 
-    # if rank 0 (only REPL loop)
+    # if rank 0 (only REPL worker)
     if {[adlb::rank] == 0} {
 
       set numWorkers [ adlb::workers ]
-      # puts "numWorkers: $numWorkers"
       # for all workers (start at 1, skip this current one)
       for {set worker 1} {$worker < $numWorkers} {incr worker} {
-        # # set max priority
         # send targeted task to worker with payload "loadTic tic_code"
         set putAction [list "repl::loadTic"]
         lappend putAction $tic_code        
-
         adlb::put $worker ${turbine::WORK_TASK} $putAction ::turbine::INT_MAX 1 HARD
       }
     }
-    puts "rank: [adlb::rank] done loadTic"
     adlb::worker_barrier
   }
 
+  # looks up the global variable ids from globals_map, checks if they exist,
+  # then retrieves their values and prints them out.
+  proc printGlobals {} {
+    set globals [turbine::get_globals_map]
+    dict for {varname id} $globals {
+      if {[adlb::exists $id]} {
+        puts "variable $varname has id $id and value [adlb::retrieve $id]"
+        } else {
+          puts "variable $varname has id $id but is still not assigned a value"
+        }
+    }
 
+  }
 
-    # rank 0 (REPL loop) compiles user input into tic (only contains 
-    # proc definitions and global var assignments). Then, it calls loadTic
-    # on it. This spawns tasks for all other workers to, so they all have the variable
-    # and proc definitions (nothing executed, though, on any of the ranks). Once they
-    # all reach the barrier, rank 0 (REPL) executes swift:main and carries on with
-    # any function calls.
-
-    # The only problem is: user can no longer interactively start tasks and then start
-    # more until the other tasks (workers) are finished, unless we set the loadTic targeted
-    # tasks to a very high priority (in which case, the definitions, such as swift:main or
-    # globals may be overwritten).
-
-
+  proc printHelp {} {
+    puts "Enter your swift script, followed by %END on a separate line."
+    puts "REPL commands:"
+    puts "%ls: print out global variable names, ids, and values"
+    puts "%EXIT: exit this REPL program"
+    puts "%END: indicate the end of your swift script"
+  }
 
 }
