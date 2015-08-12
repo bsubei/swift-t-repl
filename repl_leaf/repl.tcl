@@ -5,6 +5,8 @@ namespace import turbine::*
 
 namespace eval repl {
 
+  set ignores [list "u:HARD" "u:SOFT" "u:RANK" "u:NODE"]
+
   proc start_repl {} {
 
     puts "Welcome to the extremely basic REPL turbine"
@@ -33,6 +35,8 @@ namespace eval repl {
         set input [gets stdin]
       }
 
+      # append extern statements to user's scripts
+      set allInput "[externStatements]\n$allInput"
       puts "Running user input..."
 
       # write input to swift file and compile it in STC
@@ -79,6 +83,23 @@ namespace eval repl {
       }
     }
     adlb::worker_barrier
+  }
+
+  # returns extern statements for each global variable defined in earlier scripts
+  proc externStatements {} {
+    set externs ""
+    set globals [turbine::get_globals_map]
+    dict for {varname id} $globals {
+      # ignore variables defined in $ignores
+      if {[lsearch ${repl::ignores} $varname] >= 0} {
+        continue
+      }
+      # take substring (cut out "u:" from u:<varname>)
+      set name [string range $varname 2 end]
+      append externs "extern int $name;\n"
+    }
+
+    return $externs
   }
 
   # looks up the global variable ids from globals_map, checks if they exist,
