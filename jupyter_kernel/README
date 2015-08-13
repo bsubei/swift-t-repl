@@ -1,0 +1,10 @@
+This is a Jupyter kernel for Swift/T, written in Python. If you connect to it using a Jupyter client, you will be able to use Swift/T as a REPL of sorts.
+
+Check out http://jupyter-client.readthedocs.org/ for documentation, specifically the page about simple wrapper kernels (which this kernel is based on).
+
+
+To install Jupyter: simply run `sudo pip install jupyter`.
+
+To install this Jupyter kernel, run `sudo jupyter kernelspec install </path/to/this/folder/swiftkernel>`.
+
+To run the kernel, run `jupyter console --kernel swiftkernel`.
