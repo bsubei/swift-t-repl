@@ -8,3 +8,6 @@ To install Jupyter: simply run `sudo pip install jupyter`.
 To install this Jupyter kernel, run `sudo jupyter kernelspec install </path/to/this/folder/swiftkernel>`.
 
 To run the kernel, run `jupyter console --kernel swiftkernel`.
+
+
+Don't forget to go into the repl_leaf folder and read the README. You will have to setup the repl_leaf Tcl packages so it can be called from within Swift/T (which this kernel calls).
