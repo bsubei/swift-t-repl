@@ -12,32 +12,12 @@ namespace eval repl {
     puts "Welcome to the extremely basic REPL turbine"
 
     while {1} {
-      puts "Please enter your swift script. Use %HELP for help."
-      # store entire input here (concatenate it)
-      set allInput ""
-
-      # keep taking user input until %EXIT is entered
-      set input [gets stdin]
-
-      # append all input until %END is given
-      while {[string compare $input "%END"] != 0} {
-        if {[string compare $input "%EXIT"] == 0} {
-          puts "exiting..."
-          return
-        } elseif {[string compare $input "%ls"] == 0} {
-          puts "printing out global variable states:"
-          printGlobals
-        } elseif {[string compare $input "%HELP"] == 0} {
-          printHelp
-        } else {
-          append allInput "$input\n"
-        }
-        set input [gets stdin]
-      }
+      # puts "Please enter your swift script. Use %HELP for help."
 
       # append extern statements to user's scripts
+      set allInput [gets stdin]
       set allInput "[externStatements]\n$allInput"
-      puts "Running user input..."
+      puts "Running user input:\n$allInput"
 
       # write input to swift file and compile it in STC
       set swiftFilename "tmp.swift"
