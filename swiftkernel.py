@@ -2,6 +2,9 @@ from ipykernel.kernelbase import Kernel
 from subprocess import Popen, PIPE, STDOUT
 import io
 import signal
+import time
+import sys
+import socket
 
 
 class SwiftKernel(Kernel):
@@ -12,16 +15,27 @@ class SwiftKernel(Kernel):
     language_info = {'mimetype': 'text/plain'}
     banner = "Swift/T kernel - Runs a Turbine instance and passes it user-entered Swift scripts."
     turbine_process = None
+    sock = None
 
-    # starts up the kernel by launching the repl turbine and opening a pipe to it.
+    # starts up the kernel by launching the repl turbine
     # TODO figure out how to pass number of processes to turbine command
     def kernel_startup():
         global turbine_process
+        global sock
+
         try:
-            turbine_process = Popen("turbine -n 4 ~/swift-t-repl/repl_leaf/repl_leaf.tic",
-                                    stdin=PIPE, stdout=PIPE, stderr=STDOUT, shell=True)
+            # turbine_process = Popen("turbine -n 4 ~/swift-t-repl/repl_leaf/repl_leaf.tic",
+            #                         stdout=sys.stdout, stderr=STDOUT, shell=True)
+            # Create a server socket
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.bind(('localhost', 12345))
+            sock.listen(1)
+
+            turbine_process = Popen("python ~/swift-t-repl/test-socket-client.py",
+                                    stdout=sys.stdout, stderr=STDOUT, shell=True)
+
         except:
-            print("Popen failed")
+            print("Could not start up turbine process or create socket")
             quit()
 
     kernel_startup()
@@ -34,22 +48,16 @@ class SwiftKernel(Kernel):
 
             # compile user's code in STC
 
-            # taken from: http://stackoverflow.com/a/28019908/341505
-            # write to turbine process (repl tcl is listening to stdin)
-            with turbine_process.stdin:
-                turbine_process.stdin.write(code)
-                turbine_process.stdin.flush()
+            # open socket connection
+            (conn, addr) = sock.accept()
+            # send user code to turbine repl over socket
+            conn.send(code)
+            # receive from socket (output from repl)
+            turbine_output = conn.recv(4096)
+            # close connection
+            conn.close()
 
-            # read back from turbine process
-            sout = io.open(turbine_process.stdout.fileno(), 'rb', closefd=False)
-            buf = ""
-            while True:
-                buf = sout.read1(1024)
-                if len(buf) == 0:
-                    break
-                print buf,
-            turbine_output = buf
-
+            # send response back to Jupyter client
             stream_content = {'name': 'stdout', 'text': turbine_output}
             self.send_response(self.iopub_socket, 'stream', stream_content)
 
@@ -60,11 +68,19 @@ class SwiftKernel(Kernel):
                 'user_expressions': {},
                }
 
+    # TODO not actually called by kernel!
     # called when kernel is about to shutdown
     def do_shutdown(self, restart=False):
         # turbine_process.terminate()
         # turbine_process.kill()
-        turbine_process.send_signal(signal.SIGINT)
+
+        print "shutting down!"
+        # close the socket
+        sock.close()
+        # kill turbine process
+        turbine_process.kill()
+        # turbine_process.send_signal(signal.SIGKILL)
+
 
 if __name__ == '__main__':
     from ipykernel.kernelapp import IPKernelApp
