@@ -24,15 +24,16 @@ class SwiftKernel(Kernel):
         global sock
 
         try:
-            # turbine_process = Popen("turbine -n 4 ~/swift-t-repl/repl_leaf/repl_leaf.tic",
-            #                         stdout=sys.stdout, stderr=STDOUT, shell=True)
+
             # Create a server socket
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             sock.bind(('localhost', 12345))
             sock.listen(1)
 
-            turbine_process = Popen("python ~/swift-t-repl/test-socket-client.py",
+            turbine_process = Popen("turbine -n 4 ~/swift-t-repl/repl_leaf/repl_leaf.tic",
                                     stdout=sys.stdout, stderr=STDOUT, shell=True)
+            # turbine_process = Popen("python ~/swift-t-repl/test-socket-client.py",
+            #                         stdout=sys.stdout, stderr=STDOUT, shell=True)
 
         except:
             print("Could not start up turbine process or create socket")

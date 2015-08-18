@@ -9,22 +9,25 @@ namespace eval repl {
 
   proc start_repl {} {
 
-    puts "Welcome to the extremely basic REPL turbine"
-
+    # puts "Welcome to the extremely basic REPL turbine"
     while {1} {
       # puts "Please enter your swift script. Use %HELP for help."
 
+      # create socket connection
+      set sock [ socket localhost 12345 ] 
+
+      # receive from socket
+      set allInput [gets $sock]
       # append extern statements to user's scripts
-      set allInput [gets stdin]
       set allInput "[externStatements]\n$allInput"
-      puts "Running user input:\n$allInput"
+      # puts "Running user input:\n$allInput"
 
       # write input to swift file and compile it in STC
       set swiftFilename "tmp.swift"
       set fileId [open $swiftFilename "w"]
       puts -nonewline $fileId $allInput
       close $fileId
-      puts "Wrote tmp file to: $swiftFilename. Calling STC on it."
+      # puts "Wrote tmp file to: $swiftFilename. Calling STC on it."
       set ticFilename "tmp.tic"
       exec stc -c -O0 -V $swiftFilename $ticFilename
       # read in tic output
@@ -32,11 +35,18 @@ namespace eval repl {
       set ticOutput [read $fileId]
       close $fileId
 
+      puts $sock "done!"
+
+      close $sock
+
+      # TODO must redirect stdout from turbine to this socket connection
+
       # eval the tic code definitions on all ranks and run worker_barrier
       loadTic [list $ticOutput]
 
       # now execute the main from the tic for this rank only
       uplevel #0 swift:main
+
     }
   }
 
