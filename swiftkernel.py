@@ -5,7 +5,7 @@ import signal
 import time
 import sys
 import socket
-
+import re
 
 class SwiftKernel(Kernel):
     implementation = 'Echo'
@@ -16,12 +16,18 @@ class SwiftKernel(Kernel):
     banner = "Swift/T kernel - Runs a Turbine instance and passes it user-entered Swift scripts."
     turbine_process = None
     sock = None
+    globals_map = None
+    import_modules = None
 
     # starts up the kernel by launching the repl turbine
     # TODO figure out how to pass number of processes to turbine command
     def kernel_startup():
         global turbine_process
         global sock
+
+        # TODO initialize all globals here
+        global import_modules
+        import_modules = []
 
         try:
 
@@ -43,12 +49,29 @@ class SwiftKernel(Kernel):
 
     def do_execute(self, code, silent, store_history=True, user_expressions=None,
                    allow_stdin=False):
+
+        global import_modules
+
         if not silent:
 
-            # append extern statements to user's scripts
+            # prepend previous import statements
+            for module in import_modules:
+                code = "import " + module + ";\n" + code
 
-            # compile user's code in STC
+            # search for imports and append them to list of imports
+            match_obj = re.search(r'\s*import\s+(\S+)\s*;', code)
+            if match_obj:
+                for obj in match_obj.groups():
+                    # if it doesn't already exist, append it
+                    if obj not in import_modules:
+                        import_modules.append(obj)
+                        # print("adding " + str(obj) + " to imports")
 
+            # TODO prepend extern statements to user's scripts (currently done in tcl)
+
+            # TODO compile user's code in STC (currently done in tcl)
+
+            # print "sending code:\n" + code
             # open socket connection
             (conn, addr) = sock.accept()
             # send user code to turbine repl over socket
@@ -57,6 +80,8 @@ class SwiftKernel(Kernel):
             turbine_output = conn.recv(4096)
             # close connection
             conn.close()
+
+            # TODO update globals_map from turbine_output
 
             # send response back to Jupyter client
             stream_content = {'name': 'stdout', 'text': turbine_output}

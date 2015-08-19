@@ -20,7 +20,7 @@ namespace eval repl {
       set allInput [gets $sock]
       # append extern statements to user's scripts
       set allInput "[externStatements]\n$allInput"
-      # puts "Running user input:\n$allInput"
+      puts "Running user input:\n$allInput"
 
       # write input to swift file and compile it in STC
       set swiftFilename "tmp.swift"
@@ -35,9 +35,6 @@ namespace eval repl {
       set ticOutput [read $fileId]
       close $fileId
 
-      puts $sock "done!"
-
-      close $sock
 
       # TODO must redirect stdout from turbine to this socket connection
 
@@ -47,6 +44,19 @@ namespace eval repl {
       # now execute the main from the tic for this rank only
       uplevel #0 swift:main
 
+
+      # output globals dictionary back to jupyter kernel
+      puts $sock "{"
+      set globals [turbine::get_globals_map]
+      dict for {varname id} $globals {
+        # ignore variables defined in $ignores
+        if {[lsearch ${repl::ignores} $varname] >= 0} {
+          continue
+        }
+        puts $sock "$varname:$id"
+      }
+      puts $sock "}"
+      close $sock
     }
   }
 
