@@ -6,6 +6,7 @@ import time
 import sys
 import socket
 import re
+import string
 
 class SwiftKernel(Kernel):
     implementation = 'Echo'
@@ -90,6 +91,40 @@ class SwiftKernel(Kernel):
                 'payload': [],
                 'user_expressions': {},
                }
+
+    # tells jupyter client whether code entered is complete (or should be continued)
+    def do_is_complete(self, code):
+        complete = self.braces_match(code)
+        # TEMPORARY FIX: if open brace exists, it is incomplete until
+        # final closing brace is entered.
+        if complete:
+            return {'status': 'complete'}
+        else:
+            return {'status': 'incomplete'}
+
+    # given a string, return True if there are no braces or if braces
+    # are matching (opening and closing). Return False otherwise.
+    def braces_match(self, str):
+        find_result = string.find(str, "{")
+        counter = 0
+        # no braces exist at all
+        if find_result < 0:
+            return True
+        else:
+            # go over every char
+            for c in str:
+                # increment/decrement counter upon seeing braces
+                if c == '{':
+                    counter += 1
+                elif c == '}':
+                    counter -= 1
+            # unbalanced braces, input incomplete
+            if counter != 0:
+                return False
+            # balanced braces, input complete
+            else:
+                return True
+
 
     # TODO not actually called by kernel!
     # called when kernel is about to shutdown
