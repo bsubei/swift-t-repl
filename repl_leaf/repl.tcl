@@ -13,11 +13,25 @@ namespace eval repl {
     while {1} {
       # puts "Please enter your swift script. Use %HELP for help."
 
-      # create socket connection
+      # create non-blocking socket connection
       set sock [ socket localhost 12345 ] 
+      fconfigure $sock -blocking 0 -buffering line
 
       # receive from socket
-      set allInput [gets $sock]
+      set allInput ""
+      set input [gets $sock]
+      # keep reading until you get something
+      while {[string length $input] <= 0} {
+        set input [gets $sock]
+      }
+      # as long as there's more input, keep reading from socket
+      while {![fblocked $sock]} {
+        append allInput "$input\n"
+        set input [gets $sock]
+      }
+      append allInput "$input\n"
+
+
       # append extern statements to user's scripts
       set allInput "[externStatements]\n$allInput"
       puts "Running user input:\n$allInput"
@@ -45,17 +59,21 @@ namespace eval repl {
       uplevel #0 swift:main
 
 
-      # output globals dictionary back to jupyter kernel
-      puts $sock "{"
-      set globals [turbine::get_globals_map]
-      dict for {varname id} $globals {
-        # ignore variables defined in $ignores
-        if {[lsearch ${repl::ignores} $varname] >= 0} {
-          continue
-        }
-        puts $sock "$varname:$id"
-      }
-      puts $sock "}"
+      # # output globals dictionary back to jupyter kernel
+      # puts $sock "{"
+      # set globals [turbine::get_globals_map]
+      # dict for {varname id} $globals {
+      #   # ignore variables defined in $ignores
+      #   if {[lsearch ${repl::ignores} $varname] >= 0} {
+      #     continue
+      #   }
+      #   puts $sock "$varname:$id"
+      # }
+      # puts $sock "}"
+
+      # DEBUG: output all swift code you ran
+      puts $sock $allInput
+
       close $sock
     }
   }

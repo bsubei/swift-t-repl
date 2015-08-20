@@ -67,11 +67,8 @@ class SwiftKernel(Kernel):
                         import_modules.append(obj)
                         # print("adding " + str(obj) + " to imports")
 
-            # TODO prepend extern statements to user's scripts (currently done in tcl)
-
-            # TODO compile user's code in STC (currently done in tcl)
-
-            # print "sending code:\n" + code
+            print "sending code:\n" + code
+            sys.stdout.flush()
             # open socket connection
             (conn, addr) = sock.accept()
             # send user code to turbine repl over socket
